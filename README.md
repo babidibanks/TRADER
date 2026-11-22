@@ -8,6 +8,9 @@ Un diario de trading tipo Tamagotchi. Tu mascota, **Velita** (un espíritu-vela)
 3. **+ Trade** → registra la operación. Las capturas se pegan con **Ctrl+V** directamente desde TradingView/MT4 (Win+Shift+S → Ctrl+V), o se arrastran.
 4. ¿Quieres verlo lleno? Ajustes → *Cargar datos de ejemplo* (y luego *Borrar todo*).
 
+## En el móvil
+En pantallas pequeñas ves una sola pantalla simple: la mascota, tu capital, el PNL, la barra de la meta (500 € → 10.000 €, editable en Ajustes, con el % mensual que necesitas para llegar), el conteo de victorias / stop loss / derrotas / break-even y los 10 últimos trades. Con el botón **+** registras un trade nuevo.
+
 ## Qué incluye
 - **Mascota que evoluciona**: Huevo → Bebé (Lv 2) → Joven (Lv 5) → Adulto (Lv 10) → Leyenda (Lv 20). Se pone verde, amarilla, roja o gris según su HP.
 - **HP = disciplina (55%) + diario completo (45%)** de tus últimos 10 trades, menos una penalización por cada trade con más de un día sin revisar.

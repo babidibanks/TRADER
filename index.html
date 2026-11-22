@@ -22,10 +22,44 @@
     <button data-tab="settings">Ajustes</button>
   </nav>
 </header>
+<button class="m-back" data-go="home">← Volver</button>
 
 <main>
   <!-- INICIO -->
   <section id="tab-home" class="tab active">
+    <!-- VISTA MÓVIL (simple) -->
+    <div class="m-home">
+      <div class="m-top">
+        <span class="pixel m-logo">🕯️ CANDLE QUEST</span>
+        <button class="m-gear" data-go="settings" aria-label="Ajustes">⚙</button>
+      </div>
+      <div class="m-pet">
+        <canvas id="m-pet-canvas" width="160" height="160"></canvas>
+        <div class="m-pet-info">
+          <div class="pixel m-pet-name" id="m-pet-name">VELITA</div>
+          <div class="pixel m-lvl" id="m-lvl">LV 1</div>
+          <div class="bar"><div id="m-hp" class="bar-fill hp"></div></div>
+          <div class="m-mood" id="m-mood"></div>
+        </div>
+      </div>
+      <div class="m-capital">
+        <div class="m-k">Capital</div>
+        <div class="m-big" id="m-eq">500 €</div>
+        <div class="m-pnl" id="m-pnl"></div>
+      </div>
+      <div class="m-goal">
+        <div class="m-goal-head"><span class="pixel">META</span><span id="m-goal-txt"></span></div>
+        <div class="bar big"><div id="m-goal-bar" class="bar-fill goal"></div></div>
+        <div class="m-goal-sub" id="m-goal-sub"></div>
+      </div>
+      <div class="m-wl" id="m-wl"></div>
+      <div class="m-hist">
+        <div class="pixel m-hist-title">HISTORIAL · 10 ULTIMOS</div>
+        <div id="m-last"></div>
+      </div>
+    </div>
+    <button class="m-fab" data-go="new" aria-label="Nuevo trade">+</button>
+
     <div class="home-grid">
       <div class="panel pet-panel">
         <div class="pet-head">
@@ -46,6 +80,11 @@
 
       <div class="home-right">
         <div class="kpi-row" id="home-kpis"></div>
+        <div class="panel goal-panel">
+          <div class="m-goal-head"><h3 class="pixel" style="margin:0">🎯 META</h3><span id="d-goal-txt"></span></div>
+          <div class="bar big"><div id="d-goal-bar" class="bar-fill goal"></div></div>
+          <div class="m-goal-sub" id="d-goal-sub"></div>
+        </div>
         <div class="panel">
           <h3 class="pixel">CURVA DE CAPITAL</h3>
           <div class="chart-box"><canvas id="home-equity"></canvas></div>
@@ -218,6 +257,8 @@
         <label>Capital inicial<input name="capital" type="number" step="any"></label>
         <label>Moneda<select name="ccy"><option>€</option><option>$</option><option>£</option><option>¥</option></select></label>
         <label>Riesgo objetivo por trade (%)<input name="riskPct" type="number" step="any"></label>
+        <label>Meta de capital<input name="goal" type="number" step="any"></label>
+        <label>Fecha límite de la meta<input name="goalDate" type="date"></label>
       </div>
       <label>Mis reglas (una por línea) — forman tu checklist
         <textarea name="rules" rows="7"></textarea>

@@ -32,7 +32,7 @@ const DB = (() => {
 
 // ---------- State ----------
 const DEFAULT_SETTINGS = {
-  trader: 'Trader', petName: 'Velita', account: 'Cuenta principal', capital: 10000, ccy: '€', riskPct: 1,
+  trader: 'Trader', petName: 'Velita', account: 'Cuenta principal', capital: 500, ccy: '€', riskPct: 1, goal: 10000, goalDate: (() => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().slice(0, 10); })(),
   rules: ['Opero a favor de la tendencia del marco superior', 'Esperé el cierre de la vela de confirmación',
     'Riesgo ≤ 1% de la cuenta', 'SL colocado antes de entrar y respetado', 'R:R planificado ≥ 1.5',
     'No es un trade de revancha ni por aburrimiento'].join('\n'),
@@ -80,6 +80,34 @@ function session(date) {
   if (h < 16) return 'Solape Londres/NY';
   if (h < 21) return 'Nueva York';
   return 'Cierre / rollover';
+}
+// Resultado: victoria / stop loss / derrota (cierre manual en pérdida) / break-even
+function outcome(t) {
+  if (t.pnl > 0) return 'win';
+  if (!t.pnl) return 'be';
+  if (t.sl != null && t.exit != null) {
+    const d = t.dir === 'short' ? -1 : 1;
+    if ((t.exit - t.sl) * d <= pipSize(t.pair || '') * 1.5) return 'sl';
+  }
+  return 'loss';
+}
+const OUTCOME = { win: ['🏆', 'Victoria', 'pos'], sl: ['🛑', 'Stop loss', 'neg'], loss: ['❌', 'Derrota', 'neg'], be: ['➖', 'Break-even', ''] };
+function goalInfo(s) {
+  const st = state.settings, start = +st.capital || 0, goal = +st.goal || 0, eq = s.finalEq;
+  if (!goal || goal <= start) return null;
+  const prog = Math.max(0, Math.min(1, (eq - start) / (goal - start)));
+  const end = st.goalDate ? new Date(st.goalDate + 'T23:59:59') : null;
+  const monthsLeft = end ? Math.max(0, (end - Date.now()) / (30.44 * 864e5)) : null;
+  const need = eq > 0 ? goal / eq : null;
+  const monthly = need && monthsLeft > 0.25 && need > 1 ? Math.pow(need, 1 / monthsLeft) - 1 : null;
+  const daysLeft = end ? Math.max(0, Math.ceil((end - Date.now()) / 864e5)) : null;
+  return { start, goal, eq, prog, need, monthly, daysLeft, end };
+}
+function goalText(gi) {
+  if (!gi) return ['', 'Define tu meta en Ajustes'];
+  if (gi.eq >= gi.goal) return [`${money(gi.eq, false)} / ${money(gi.goal, false)}`, '🏁 ¡META CONSEGUIDA!'];
+  return [`${money(gi.eq, false)} / ${money(gi.goal, false)}`,
+    `${pct(gi.prog, 1)} del camino · te falta x${fx(gi.need, 1)}` + (gi.daysLeft != null ? ` · ${gi.daysLeft} días` : '') + (gi.monthly != null ? ` · ~${pct(gi.monthly, 1)} al mes` : '')];
 }
 const discipline = t => { const n = rulesList().length; return n ? Math.min(1, (t.rules || []).length / n) : 1; };
 const ruleBroken = t => discipline(t) < 1;
@@ -245,6 +273,8 @@ function drawPet(stage, mood) {
   if (mood === 'sad' || mood === 'sick') {
     sp.forEach((row, yy) => [...row].forEach((ch, xx) => { if (ch === 'm') { x.fillStyle = col.b; x.fillRect(xx * px, yy * px, px, px); x.fillStyle = '#141420'; x.fillRect(xx * px, yy * px + px / 2, px, px / 2); } }));
   }
+  const m = document.getElementById('m-pet-canvas');
+  if (m) { m.width = c.width; m.height = c.height; const mx = m.getContext('2d'); mx.clearRect(0, 0, m.width, m.height); mx.drawImage(c, 0, 0); }
 }
 function petMessage(s, g) {
   const name = state.settings.petName;
@@ -289,7 +319,7 @@ function drawChart(el, spec) {
   if (!values.length) { x.fillStyle = tick; x.textAlign = 'center'; x.fillText('Sin datos todavía', W / 2, H / 2); return; }
   let lo = Math.min(...values), hi = Math.max(...values);
   if (spec.type === 'bar') lo = Math.min(0, lo);
-  if (lo === hi) { lo -= 1; hi += 1; }
+  if (lo === hi) { const k = Math.abs(lo) * 0.05 || 1; lo -= k; hi += k; }
   const pad = (hi - lo) * 0.08; if (spec.type !== 'bar') lo -= pad; hi += pad;
   const yLabels = 5, ylw = Math.max(...Array.from({ length: yLabels }, (_, i) => x.measureText(fmt(lo + (hi - lo) * i / (yLabels - 1))).width));
   const L = ylw + 12, R = 10, T = 10, B = 24, cw = W - L - R, ch = H - T - B;
@@ -337,7 +367,7 @@ function render() {
   const s = computeStats(state.trades);
   const g = game(s);
   state.lastGame = state.lastGame || g;
-  renderHome(s, g); renderJournal(); renderStats(s); renderBadges(s, g); renderReport();
+  renderHome(s, g); renderMobile(s, g); renderJournal(); renderStats(s); renderBadges(s, g); renderReport();
   $$('.ccy').forEach(e => e.textContent = state.settings.ccy);
   // datalists
   const pairs = [...new Set([...PAIRS, ...state.trades.map(t => t.pair)])];
@@ -385,6 +415,26 @@ function renderHome(s, g) {
   }).join('') : '<li class="muted">Nada pendiente. Diario al día 💚</li>';
 }
 
+const MOOD_TXT = { happy: '💚 Feliz y fuerte', ok: '💛 Bien, puede mejorar', sad: '❤️ Triste: revisa tus trades', sick: '🩶 Enferma: disciplina baja' };
+function renderMobile(s, g) {
+  const gi = goalInfo(s), [gt, gs] = goalText(gi);
+  $('#m-pet-name').textContent = state.settings.petName.toUpperCase();
+  $('#m-lvl').textContent = `LV ${g.level} · ${g.rank.toUpperCase()}`;
+  const hb = $('#m-hp'); hb.style.width = g.hp + '%'; hb.style.background = MOOD_COL[g.mood][0];
+  $('#m-mood').textContent = s.n ? MOOD_TXT[g.mood] : '🥚 Registra tu primer trade';
+  $('#m-eq').textContent = money(s.finalEq, false);
+  $('#m-pnl').innerHTML = `PNL <b class="${cls(s.net)}">${money(s.net)}</b> <span class="${cls(s.net)}">(${s.ret != null ? (s.ret > 0 ? '+' : '') + pct(s.ret, 1) : '—'})</span>`;
+  [['m-goal-txt', 'm-goal-bar', 'm-goal-sub'], ['d-goal-txt', 'd-goal-bar', 'd-goal-sub']].forEach(([a, b, c]) => {
+    $('#' + a).textContent = gt; $('#' + b).style.width = (gi ? gi.prog * 100 : 0) + '%'; $('#' + c).textContent = gs;
+  });
+  const cnt = { win: 0, sl: 0, loss: 0, be: 0 }; s.trades.forEach(t => cnt[outcome(t)]++);
+  $('#m-wl').innerHTML = ['win', 'sl', 'loss', 'be'].map(k => `<div class="m-wl-i ${k}"><div class="m-wl-n">${cnt[k]}</div><div class="m-wl-l">${OUTCOME[k][0]} ${OUTCOME[k][1]}</div></div>`).join('');
+  const last = s.trades.slice(-10).reverse();
+  $('#m-last').innerHTML = last.length ? last.map(t => {
+    const o = OUTCOME[outcome(t)];
+    return `<div class="m-row" data-open="${t.id}"><span class="m-o">${o[0]}</span><div class="m-row-main"><b>${esc(t.pair)}</b> <span class="dir ${t.dir}">${t.dir === 'long' ? '▲' : '▼'}</span><br><small>${fmtDate(t.closeDate || t.date)} · ${o[1]}</small></div><b class="${cls(t.pnl)}">${money(t.pnl)}</b></div>`;
+  }).join('') : '<div class="empty">Aún no hay trades. Pulsa + para registrar el primero.</div>';
+}
 function filteredTrades() {
   const p = $('#f-pair').value, r = $('#f-res').value, m = $('#f-month').value, q = $('#f-q').value.toLowerCase();
   return [...state.trades].filter(t => (!p || t.pair === p) && (!m || monthKey(t.date) === m)
@@ -635,6 +685,7 @@ function toast(msg, k = '') { const d = document.createElement('div'); d.classNa
 function go(tab) {
   $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
+  document.body.dataset.tab = tab;
   window.scrollTo(0, 0);
   requestAnimationFrame(redrawCharts);
 }
@@ -679,7 +730,7 @@ async function loadDemo() {
     const R = win ? 1 + Math.random() * (disciplined ? 2.5 : 1.2) : -(disciplined ? 1 : 1 + Math.random() * 0.8);
     const entry = pair.includes('JPY') ? 145 + Math.random() * 45 : 1.1 + Math.random() * 0.2;
     const d = dir === 'long' ? 1 : -1, sl = entry - d * riskP * ps, exit = entry + d * R * riskP * ps, tp = entry + d * 2 * riskP * ps;
-    const pnl = Math.round(R * 100 * (1 + i / 120) * 100) / 100;
+    const pnl = Math.round(R * (+state.settings.capital || 500) * 0.02 * (1 + i / 40) * 100) / 100;
     const full = i > 30 || Math.random() > 0.5;
     const t = {
       id: uid(), pair, dir, date: date.toISOString(), closeDate: new Date(+date + (1 + Math.random() * 8) * 36e5).toISOString(),
@@ -739,6 +790,8 @@ function bind() {
     handleImageFile(item.getAsFile(), slot);
   });
   document.addEventListener('click', e => {
+    const gg = e.target.closest('[data-go]');
+    if (gg) { if (gg.dataset.go === 'new') resetForm(); return go(gg.dataset.go); }
     const o = e.target.closest('[data-open]'); if (o) return openTrade(o.dataset.open);
     const ed = e.target.closest('[data-edit]'); if (ed) return editTrade(ed.dataset.edit);
     const del = e.target.closest('[data-del]');
@@ -774,6 +827,7 @@ function bind() {
 }
 
 (async function init() {
+  document.body.dataset.tab = 'home';
   await DB.open(); await loadAll();
   fillSelects(); fillSettings(); bind(); resetForm(); render();
 })();
