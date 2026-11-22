@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Candle Quest — Diario de Trading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar no-print">
+  <div class="logo">🕯️ CANDLE QUEST</div>
+  <nav id="tabs">
+    <button data-tab="home" class="active">Inicio</button>
+    <button data-tab="new">+ Trade</button>
+    <button data-tab="journal">Diario</button>
+    <button data-tab="stats">Estadísticas</button>
+    <button data-tab="badges">Logros</button>
+    <button data-tab="report">Informe Pro</button>
+    <button data-tab="settings">Ajustes</button>
+  </nav>
+</header>
+
+<main>
+  <!-- INICIO -->
+  <section id="tab-home" class="tab active">
+    <div class="home-grid">
+      <div class="panel pet-panel">
+        <div class="pet-head">
+          <span id="pet-name" class="pixel">VELITA</span>
+          <span id="pet-level" class="pixel badge-lvl">LV 1</span>
+        </div>
+        <div class="pet-stage" id="pet-stage">
+          <canvas id="pet-canvas" width="200" height="200"></canvas>
+          <div id="pet-zzz" class="zzz hidden">z z z</div>
+        </div>
+        <div class="pet-rank pixel" id="pet-rank">HUEVO</div>
+        <div class="bar-label"><span>HP · Disciplina</span><span id="hp-txt">60/100</span></div>
+        <div class="bar"><div id="hp-bar" class="bar-fill hp"></div></div>
+        <div class="bar-label"><span>XP</span><span id="xp-txt">0/30</span></div>
+        <div class="bar"><div id="xp-bar" class="bar-fill xp"></div></div>
+        <div class="dialog" id="pet-dialog">...</div>
+      </div>
+
+      <div class="home-right">
+        <div class="kpi-row" id="home-kpis"></div>
+        <div class="panel">
+          <h3 class="pixel">CURVA DE CAPITAL</h3>
+          <div class="chart-box"><canvas id="home-equity"></canvas></div>
+        </div>
+        <div class="two-col">
+          <div class="panel">
+            <h3 class="pixel">MISIONES</h3>
+            <ul class="quests" id="quests"></ul>
+          </div>
+          <div class="panel">
+            <h3 class="pixel">PENDIENTES</h3>
+            <ul class="pending" id="pending"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NUEVO TRADE -->
+  <section id="tab-new" class="tab">
+    <form id="trade-form" class="panel" autocomplete="off">
+      <div class="form-title">
+        <h2 class="pixel" id="form-title">NUEVO TRADE</h2>
+        <div class="xp-preview pixel" id="xp-preview">+0 XP</div>
+      </div>
+      <input type="hidden" name="id">
+
+      <fieldset>
+        <legend>1 · La operación</legend>
+        <div class="grid g4">
+          <label>Par<input name="pair" list="pairs" required placeholder="USDJPY"></label>
+          <label>Dirección
+            <div class="seg" id="dir-seg">
+              <button type="button" data-v="long" class="on">▲ Compra</button>
+              <button type="button" data-v="short">▼ Venta</button>
+            </div>
+            <input type="hidden" name="dir" value="long">
+          </label>
+          <label>Apertura<input type="datetime-local" name="date" required></label>
+          <label>Cierre<input type="datetime-local" name="closeDate"></label>
+          <label>Entrada<input name="entry" type="number" step="any" required></label>
+          <label>Stop Loss<input name="sl" type="number" step="any"></label>
+          <label>Take Profit<input name="tp" type="number" step="any"></label>
+          <label>Salida<input name="exit" type="number" step="any"></label>
+          <label>Lotes<input name="lots" type="number" step="any"></label>
+          <label><span>Resultado neto (<span class="ccy">€</span>)</span><input name="pnl" type="number" step="any" required placeholder="-50 / 120"></label>
+          <label>Timeframe
+            <select name="tf"><option>M1</option><option>M5</option><option selected>M15</option><option>M30</option><option>H1</option><option>H4</option><option>D1</option></select>
+          </label>
+          <label>Setup<input name="setup" list="setups" placeholder="Pin bar en soporte"></label>
+        </div>
+        <div class="live" id="live-calc"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>2 · Antes de entrar</legend>
+        <div class="grid g2">
+          <label>¿Por qué entraste? (lectura del gráfico)<textarea name="reason" rows="3" placeholder="Rechazo en resistencia H4 + envolvente bajista en M15, a favor de la tendencia diaria..."></textarea></label>
+          <div>
+            <label>Emoción al entrar<select name="emoBefore" class="emo"></select></label>
+            <div class="rules-box">
+              <div class="small-title">Checklist de reglas</div>
+              <div id="rules-check"></div>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>3 · Capturas <span class="hint">(arrastra, haz clic o pega con Ctrl+V)</span></legend>
+        <div class="grid g2">
+          <div class="drop" data-slot="imgBefore" tabindex="0"><span>📸 ANTES<br><small>setup al entrar</small></span></div>
+          <div class="drop" data-slot="imgAfter" tabindex="0"><span>📸 DESPUÉS<br><small>cómo terminó</small></span></div>
+        </div>
+        <input type="file" id="file-pick" accept="image/*" hidden>
+      </fieldset>
+
+      <fieldset>
+        <legend>4 · Revisión</legend>
+        <div class="grid g2">
+          <label>Lección / qué harías distinto<textarea name="review" rows="3" placeholder="Entré bien pero moví el TP por miedo. La próxima: dejar correr hasta 2R."></textarea></label>
+          <div>
+            <label>Emoción al salir<select name="emoAfter" class="emo"></select></label>
+            <label>Calidad de ejecución
+              <div class="stars" id="stars"></div>
+              <input type="hidden" name="rating" value="0">
+            </label>
+            <label>Etiquetas<input name="tags" placeholder="noticias, BoJ, sobreoperé"></label>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button type="button" class="btn ghost" id="form-reset">Limpiar</button>
+        <button type="submit" class="btn primary pixel">GUARDAR ▶</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- DIARIO -->
+  <section id="tab-journal" class="tab">
+    <div class="panel">
+      <div class="filters">
+        <h3 class="pixel">DIARIO</h3>
+        <select id="f-pair"><option value="">Todos los pares</option></select>
+        <select id="f-res"><option value="">Todos</option><option value="win">Ganadoras</option><option value="loss">Perdedoras</option><option value="plan">Plan seguido</option><option value="noplan">Reglas rotas</option><option value="incomplete">Diario incompleto</option></select>
+        <input type="month" id="f-month">
+        <input id="f-q" placeholder="Buscar texto...">
+      </div>
+      <div id="journal-list"></div>
+    </div>
+  </section>
+
+  <!-- ESTADÍSTICAS -->
+  <section id="tab-stats" class="tab">
+    <div class="kpi-grid" id="stats-kpis"></div>
+    <div class="panel insight" id="insight"></div>
+    <div class="two-col">
+      <div class="panel"><h3 class="pixel">EQUITY</h3><div class="chart-box tall"><canvas id="ch-equity"></canvas></div></div>
+      <div class="panel"><h3 class="pixel">DRAWDOWN</h3><div class="chart-box tall"><canvas id="ch-dd"></canvas></div></div>
+    </div>
+    <div class="two-col">
+      <div class="panel"><h3 class="pixel">DISTRIBUCIÓN R</h3><div class="chart-box tall"><canvas id="ch-r"></canvas></div></div>
+      <div class="panel"><h3 class="pixel">CALENDARIO</h3><div id="calendar"></div></div>
+    </div>
+    <div class="breakdowns" id="breakdowns"></div>
+  </section>
+
+  <!-- LOGROS -->
+  <section id="tab-badges" class="tab">
+    <div class="panel">
+      <h3 class="pixel">LOGROS</h3>
+      <p class="muted">Los logros premian el <b>proceso</b>, no la suerte. Una pérdida bien gestionada vale tanto como una ganancia.</p>
+      <div class="badges" id="badges"></div>
+    </div>
+    <div class="panel">
+      <h3 class="pixel">CÓMO GANAR XP</h3>
+      <table class="tbl"><tbody>
+        <tr><td>Registrar el trade</td><td>+10</td></tr>
+        <tr><td>Explicar por qué entraste (≥20 caracteres)</td><td>+10</td></tr>
+        <tr><td>Captura ANTES</td><td>+10</td></tr>
+        <tr><td>Captura DESPUÉS</td><td>+10</td></tr>
+        <tr><td>Escribir la lección</td><td>+10</td></tr>
+        <tr><td>Emociones antes y después</td><td>+5</td></tr>
+        <tr><td>Checklist de reglas (proporcional)</td><td>hasta +25</td></tr>
+        <tr><td>Cada logro desbloqueado</td><td>+50</td></tr>
+      </tbody></table>
+      <p class="muted">El dinero ganado <b>no</b> da XP. Así funcionan los profesionales: se miden por ejecución.</p>
+    </div>
+  </section>
+
+  <!-- INFORME -->
+  <section id="tab-report" class="tab">
+    <div class="no-print report-actions">
+      <label>Desde <input type="date" id="r-from"></label>
+      <label>Hasta <input type="date" id="r-to"></label>
+      <button class="btn primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+    </div>
+    <div class="report" id="report"></div>
+  </section>
+
+  <!-- AJUSTES -->
+  <section id="tab-settings" class="tab">
+    <form id="settings-form" class="panel">
+      <h3 class="pixel">AJUSTES</h3>
+      <div class="grid g3">
+        <label>Tu nombre<input name="trader"></label>
+        <label>Nombre de la mascota<input name="petName"></label>
+        <label>Nombre de la cuenta<input name="account"></label>
+        <label>Capital inicial<input name="capital" type="number" step="any"></label>
+        <label>Moneda<select name="ccy"><option>€</option><option>$</option><option>£</option><option>¥</option></select></label>
+        <label>Riesgo objetivo por trade (%)<input name="riskPct" type="number" step="any"></label>
+      </div>
+      <label>Mis reglas (una por línea) — forman tu checklist
+        <textarea name="rules" rows="7"></textarea>
+      </label>
+      <div class="form-actions"><button class="btn primary pixel">GUARDAR</button></div>
+    </form>
+    <div class="panel">
+      <h3 class="pixel">DATOS</h3>
+      <p class="muted">Todo se guarda en este navegador (IndexedDB). Haz copias de seguridad a menudo.</p>
+      <div class="btn-row">
+        <button class="btn" id="btn-export">⬇ Exportar copia (JSON)</button>
+        <button class="btn" id="btn-import">⬆ Importar copia</button>
+        <button class="btn" id="btn-csv">⬇ Exportar CSV</button>
+        <button class="btn" id="btn-demo">🎲 Cargar datos de ejemplo</button>
+        <button class="btn danger" id="btn-wipe">🗑 Borrar todo</button>
+      </div>
+      <input type="file" id="import-file" accept="application/json" hidden>
+    </div>
+  </section>
+</main>
+
+<datalist id="pairs"></datalist>
+<datalist id="setups"></datalist>
+
+<div class="modal hidden" id="modal"><div class="modal-card" id="modal-card"></div></div>
+<div class="toast-wrap" id="toasts"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
