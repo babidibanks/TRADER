@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Candle Quest — Diario de Trading</title>
+<title>Candle Quest</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -241,7 +241,8 @@
     <div class="no-print report-actions">
       <label>Desde <input type="date" id="r-from"></label>
       <label>Hasta <input type="date" id="r-to"></label>
-      <button class="btn primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+      <button class="btn primary print-btn" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+      <span class="embed-note muted">Para guardar en PDF, abre <b>index.html</b> en el navegador del ordenador.</span>
     </div>
     <div class="report" id="report"></div>
   </section>
@@ -268,6 +269,7 @@
     <div class="panel">
       <h3 class="pixel">DATOS</h3>
       <p class="muted">Todo se guarda en este navegador (IndexedDB). Haz copias de seguridad a menudo.</p>
+      <p class="muted embed-note">En esta versión web las descargas están bloqueadas: para exportar copias o CSV, usa <b>index.html</b> en el ordenador.</p>
       <div class="btn-row">
         <button class="btn" id="btn-export">⬇ Exportar copia (JSON)</button>
         <button class="btn" id="btn-import">⬆ Importar copia</button>

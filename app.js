@@ -681,6 +681,19 @@ async function openTrade(id) {
 const closeModal = () => $('#modal').classList.add('hidden');
 
 // ---------- Misc ----------
+function ask(msg, okText = 'Sí, continuar') {
+  return new Promise(res => {
+    const w = document.createElement('div'); w.className = 'modal ask';
+    w.innerHTML = `<div class="modal-card ask-card"><p>${esc(msg)}</p><div class="btn-row"><button class="btn" data-a="0">Cancelar</button><button class="btn primary" data-a="1">${esc(okText)}</button></div></div>`;
+    w.onclick = e => { const b = e.target.closest('[data-a]'); if (b || e.target === w) { w.remove(); res(!!b && b.dataset.a === '1'); } };
+    document.body.appendChild(w); w.querySelector('[data-a="1"]').focus();
+  });
+}
+function zoom(src) {
+  const w = document.createElement('div'); w.className = 'modal zoom';
+  w.innerHTML = `<img src="${src}" alt="Captura ampliada">`; w.onclick = () => w.remove();
+  document.body.appendChild(w);
+}
 function toast(msg, k = '') { const d = document.createElement('div'); d.className = 'toast ' + k; d.innerHTML = msg; $('#toasts').appendChild(d); setTimeout(() => d.remove(), 3500); }
 function go(tab) {
   $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -718,7 +731,7 @@ function demoChart(win, dir) {
   return c.toDataURL('image/jpeg', 0.7);
 }
 async function loadDemo() {
-  if (state.trades.length && !confirm('Esto añadirá 80 trades de ejemplo a tus datos. ¿Seguro?')) return;
+  if (state.trades.length && !await ask('Esto añadirá 80 trades de ejemplo a tus datos.', 'Añadir ejemplo')) return;
   const rules = rulesList(); const now = Date.now();
   const reasons = ['Rechazo limpio en resistencia H4 con envolvente bajista en M15, tendencia diaria bajista.', 'Pullback a EMA 50 en H1 a favor de tendencia, pin bar alcista de confirmación.', 'Ruptura del rango asiático con retesteo y cierre por encima.', 'Doble suelo en soporte diario, divergencia en RSI.'];
   const lessons = ['Ejecución correcta, dejé correr hasta TP. Repetir.', 'Entré antes del cierre de la vela, impaciencia. Esperar confirmación.', 'Pérdida aceptable, el setup era válido. Nada que cambiar.', 'Moví el SL a BE demasiado pronto y me sacó. Respetar el plan.'];
@@ -752,7 +765,7 @@ async function exportJSON() {
 async function importJSON(file) {
   const data = JSON.parse(await file.text());
   if (!Array.isArray(data.trades)) return toast('Archivo no válido');
-  if (!confirm(`Importar ${data.trades.length} trades? Se fusionarán con los actuales.`)) return;
+  if (!await ask(`¿Importar ${data.trades.length} trades? Se fusionarán con los actuales.`, 'Importar')) return;
   for (const [k, v] of Object.entries(data.images || {})) { await DB.put('images', v, k); }
   for (const t of data.trades) await DB.put('trades', t);
   if (data.settings) { state.settings = { ...DEFAULT_SETTINGS, ...data.settings }; await DB.put('meta', state.settings, 'settings'); }
@@ -795,17 +808,21 @@ function bind() {
     const o = e.target.closest('[data-open]'); if (o) return openTrade(o.dataset.open);
     const ed = e.target.closest('[data-edit]'); if (ed) return editTrade(ed.dataset.edit);
     const del = e.target.closest('[data-del]');
-    if (del && confirm('¿Borrar este trade?')) {
-      const t = state.trades.find(x => x.id === del.dataset.del);
-      ['imgBefore', 'imgAfter'].forEach(k => t[k] && DB.del('images', t[k]));
-      DB.del('trades', t.id); state.trades = state.trades.filter(x => x !== t); closeModal(); render(); return;
+    if (del) {
+      ask('¿Borrar este trade y sus capturas?', 'Borrar').then(ok => {
+        if (!ok) return;
+        const t = state.trades.find(x => x.id === del.dataset.del);
+        ['imgBefore', 'imgAfter'].forEach(k => t[k] && DB.del('images', t[k]));
+        DB.del('trades', t.id); state.trades = state.trades.filter(x => x !== t); closeModal(); render(); toast('Trade borrado');
+      });
+      return;
     }
     if (e.target.closest('[data-close]') || e.target.id === 'modal') return closeModal();
-    if (e.target.matches('[data-zoom]')) window.open().document.write(`<body style="margin:0;background:#000"><img src="${e.target.src}" style="max-width:100%">`);
+    if (e.target.matches('[data-zoom]')) return zoom(e.target.src);
     const cal = e.target.closest('[data-cal]');
     if (cal) { const [y, m] = state.calMonth.split('-').map(Number); const d = new Date(y, m - 1 + +cal.dataset.cal, 1); state.calMonth = monthKey(d); renderCalendar(computeStats(state.trades)); }
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); document.querySelectorAll('.modal.zoom,.modal.ask').forEach(m => m.remove()); } });
   ['#f-pair', '#f-res', '#f-month', '#f-q'].forEach(s => $(s).addEventListener('input', renderJournal));
   ['#r-from', '#r-to'].forEach(s => $(s).addEventListener('change', renderReport));
   $('#settings-form').onsubmit = async e => {
@@ -820,13 +837,14 @@ function bind() {
   $('#import-file').onchange = e => e.target.files[0] && importJSON(e.target.files[0]);
   $('#btn-demo').onclick = loadDemo;
   $('#btn-wipe').onclick = async () => {
-    if (!confirm('¿Borrar TODOS los trades y capturas? Exporta una copia antes.')) return;
+    if (!await ask('¿Borrar TODOS los trades y capturas? Exporta una copia antes.', 'Borrar todo')) return;
     await DB.clear('trades'); await DB.clear('images'); state.trades = []; state.thumbs = {}; state.lastGame = null; render(); toast('Datos borrados');
   };
   setInterval(() => { flameTick++; if (state.pet) drawPet(state.pet.stage, state.pet.mood); }, 450);
 }
 
 (async function init() {
+  if (window.self !== window.top) document.body.classList.add('embedded');
   document.body.dataset.tab = 'home';
   await DB.open(); await loadAll();
   fillSelects(); fillSettings(); bind(); resetForm(); render();
